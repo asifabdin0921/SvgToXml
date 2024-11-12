@@ -6,35 +6,6 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const port = 3000;
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, uuidv4() + path.extname(file.originalname)); // UUID দ্বারা ফাইল নাম তৈরী হবে
-    }
-});
-
-const upload = multer({ storage: storage });
-app.use(express.static('public'));
-
-// Sequential processing queue
-let processingQueue = Promise.resolve();
-
-// Process file upload
-const processFileUpload = async (req, res) =const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const { exec } = require('child_process');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-
-const app = express();
 
 const port = process.env.PORT || 3000;
 

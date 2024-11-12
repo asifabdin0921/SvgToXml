@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Your SVG</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Convert Your SVG</h1>
+        <div class="upload-section">
+            <input type="file" id="file-input" accept=".svg">
+            <div class="input-with-unit">
+                <input type="number" id="height-input" placeholder="Height (optional)">
+            </div>
+            <div class="input-with-unit">
+                <input type="number" id="width-input" placeholder="Width (optional)">
+            </div>
+        </div>
+        <div class="button-section">
+            <button id="convert-button">Convert</button>
+            <button id="clear-button">Clear</button>
+        </div>
+        <div class="output">
+            <h2>Converted SVG Text:</h2>
+            <textarea id="output-text" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        // SVG কনভার্ট করার জন্য কনভার্ট বাটন ইভেন্ট হ্যান্ডলার
+        document.getElementById('convert-button').addEventListener('click', function() {
+            const fileInput = document.getElementById('file-input');
+            const outputText = document.getElementById('output-text');
+            const height = document.getElementById('height-input').value;
+            const width = document.getElementById('width-input').value;
+
+            // চেক করা হচ্ছে height এবং width ইনপুট পূর্ণসংখ্যা কিনা
+            if ((height && isNaN(parseInt(height))) || (width && isNaN(parseInt(width)))) {
+                alert('Please enter valid integer values for height and width.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (file && file.type === 'image/svg+xml') {
+                const formData = new FormData();
+                formData.append('svg-file', file);
+                formData.append('height', height);  // Send height to server
+                formData.append('width', width);    // Send width to server
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    outputText.value = data;
+                })
+                .catch(error => {
+                    console.error('Error during conversion:', error);
+                    alert('Error during conversion.');
+                });
+            } else {
+                alert('Please upload a valid SVG file.');
+            }
+        });
+
+        // Clear button ইভেন্ট হ্যান্ডলার
+        document.getElementById('clear-button').addEventListener('click', function() {
+            document.getElementById('file-input').value = ''; 
+            document.getElementById('output-text').value = ''; 
+            document.getElementById('height-input').value = ''; // Clear height input
+            document.getElementById('width-input').value = '';  // Clear width input
+
+            // Clear server-side files
+            fetch('/clear', { method: 'POST' })
+                .then(response => response.text())
+                .then(data => {
+                    console.log('Files cleared:', data);
+                })
+                .catch(error => {
+                    console.error('Error clearing files:', error);
+                });
+        });
+    </script>
+</body>
+</html>

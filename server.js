@@ -27,6 +27,36 @@ app.use(express.static('public'));
 let processingQueue = Promise.resolve();
 
 // Process file upload
+const processFileUpload = async (req, res) =const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const { exec } = require('child_process');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+
+const port = process.env.PORT || 3000;
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, uuidv4() + path.extname(file.originalname)); // UUID দ্
+    }
+});
+
+const upload = multer({ storage: storage });
+app.use(express.static('public'));
+
+// Sequential processing queue
+let processingQueue = Promise.resolve();
+
+// Process file upload
 const processFileUpload = async (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
@@ -69,13 +99,13 @@ const processFileUpload = async (req, res) => {
     }
 };
 
-// Endpoint to handle upload
+
 app.post('/upload', upload.single('svg-file'), (req, res) => {
     // Store the file upload time as metadata in a JSON file
     const uploadTime = Date.now();
     const fileMetadata = {
-        uuid: req.file.filename, // UUID filename
-        uploadTime: uploadTime,   // Store the upload time
+        uuid: req.file.filename, 
+        uploadTime: uploadTime,   
     };
 
     // Save metadata to a JSON file in the uploads directory
@@ -139,4 +169,5 @@ app.post('/clear', (req, res) => {
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
+});ole.log(`Server running at http://localhost:${port}`);
 });

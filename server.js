@@ -1,33 +1,35 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec } = require('child_process'); // To execute vd-tool command
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
 
 const app = express();
+const port = 3000;
 
-const port = process.env.PORT || 3000;
-
+// Middleware to parse form data
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Configure multer to save uploaded files in the 'uploads' directory
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, uuidv4() + path.extname(file.originalname)); // UUID দ্
+        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename based on timestamp
     }
 });
 
 const upload = multer({ storage: storage });
+
+// Serve static files (HTML, CSS) from 'public' folder
 app.use(express.static('public'));
 
-// Sequential processing queue
+// Sequential request queue for processing one request at a time
 let processingQueue = Promise.resolve();
 
-// Process file upload
+// Function to process each file upload request
 const processFileUpload = async (req, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded.');
@@ -38,9 +40,11 @@ const processFileUpload = async (req, res) => {
     const outputFileName = req.file.filename.replace('.svg', '.xml');
     const outputFilePath = path.join(outputDir, outputFileName);
 
+    // Get height and width from the request body, if available
     const heightDp = req.body.height ? `-heightDp ${req.body.height}` : '';
     const widthDp = req.body.width ? `-widthDp ${req.body.width}` : '';
 
+    // Run vd-tool to convert the SVG file to VectorDrawable XML
     const command = `vd-tool -c -in ${svgFilePath} -out ${outputDir} ${heightDp} ${widthDp}`;
 
     try {
@@ -57,6 +61,7 @@ const processFileUpload = async (req, res) => {
             });
         });
 
+        // Read the generated XML file and send it as response
         fs.readFile(outputFilePath, 'utf8', (err, data) => {
             if (err) {
                 console.error('Error reading the converted file:', err);
@@ -70,75 +75,36 @@ const processFileUpload = async (req, res) => {
     }
 };
 
-
+// Endpoint to handle the file upload and conversion
 app.post('/upload', upload.single('svg-file'), (req, res) => {
-    // Store the file upload time as metadata in a JSON file
-    const uploadTime = Date.now();
-    const fileMetadata = {
-        uuid: req.file.filename, 
-        uploadTime: uploadTime,   
-    };
-
-    // Save metadata to a JSON file in the uploads directory
-    const metadataFilePath = path.join(__dirname, 'uploads', req.file.filename + '.json');
-    fs.writeFileSync(metadataFilePath, JSON.stringify(fileMetadata));
-
+    // Queue each request to process one at a time
     processingQueue = processingQueue.then(() => processFileUpload(req, res));
 });
 
-// Function to delete files older than 10 minutes
-const deleteOldFiles = () => {
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
-
-    fs.readdir(uploadsDir, (err, files) => {
-        if (err) return console.error('Error reading directory:', err);
-
+// For clearing the inputs and output text area when user clicks "clear"
+app.post('/clear', (req, res) => {
+    fs.readdir('uploads', (err, files) => {
+        if (err) return res.status(500).send('Error clearing uploads.');
+        
         files.forEach(file => {
-            const filePath = path.join(uploadsDir, file);
-            
-            // Only process the JSON metadata files and the original files (not directories)
-            if (file.endsWith('.json')) {
-                fs.readFile(filePath, 'utf8', (err, data) => {
-                    if (err) {
-                        console.error('Error reading metadata file:', err);
-                        return;
-                    }
-
-                    const metadata = JSON.parse(data);
-                    const currentTime = Date.now();
-
-                    // Check if the file is older than 10 minutes
-                    if (currentTime - metadata.uploadTime > TEN_MINUTES) {
-                        // Delete the original file
-                        const originalFilePath = path.join(uploadsDir, metadata.uuid);
-                        fs.unlink(originalFilePath, (err) => {
-                            if (err) console.error(`Error deleting old file: ${originalFilePath}`, err);
-                            else console.log(`Deleted old file: ${originalFilePath}`);
-                        });
-
-                        // Delete the associated metadata file
-                        fs.unlink(filePath, (err) => {
-                            if (err) console.error(`Error deleting metadata file: ${filePath}`, err);
-                            else console.log(`Deleted metadata file: ${filePath}`);
-                        });
-                    }
-                });
-            }
+            fs.unlink(path.join('uploads', file), err => {
+                if (err) console.log(`Error deleting file: ${file}`);
+            });
         });
     });
-};
+    res.send('Cleared');
+});
 
-// Run deleteOldFiles function every 10 minutes
-setInterval(deleteOldFiles, 10 * 60 * 1000);
-
-// Add '/clear' route to manually delete old files
-app.post('/clear', (req, res) => {
-    deleteOldFiles();  // Call the function to delete old files
-    res.send('Old files cleared successfully');
+// Start the server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});    if (err) console.log(`Error deleting file: ${file}`);
+            });
+        });
+    });
+    res.send('Cleared');
 });
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
-});ole.log(`Server running at http://localhost:${port}`);
 });
